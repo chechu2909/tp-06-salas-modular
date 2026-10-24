@@ -3,20 +3,21 @@ const express = require("express");
 const morgan = require("morgan");
 const expressLayouts = require("express-ejs-layouts");
 
+const { getConfiguracion } = require("./configuracion");
 const {
   identificarSolicitud,
   medirDuracion,
 } = require("./middleware/solicitudes");
 
-// 1. Importar las fábricas de rutas y servicios
-const { crearRutasReservas } = require("./rutas/reservas");
-const { crearServicioReservas } = require("./servicios/reservas");
+// 1. Importar la fábrica de rutas
+const crearRutasReservas = require("./rutas/reservas");
 
-function crearApp() {
+function crearApp(servicioReservas) {
   const app = express();
+  const config = getConfiguracion();
 
-  // Instanciar el servicio usando su función fábrica
-  const servicioReservas = crearServicioReservas();
+  // Guardar el servicio en app.locals para que esté disponible globalmente si se requiere
+  app.locals.servicioReservas = servicioReservas;
 
   // 1. Configuración de Motor de Plantillas (EJS y layouts)
   app.set("view engine", "ejs");
@@ -24,8 +25,8 @@ function crearApp() {
   app.use(expressLayouts);
   app.set("layout", "layout");
 
-  // 2. Logging y Middlewares personalizados de solicitudes
-  app.use(morgan("dev"));
+  // 2. Logging dinámico según entorno y Middlewares personalizados
+  app.use(morgan(config.morganFormat));
   app.use(identificarSolicitud);
   app.use(medirDuracion);
 
@@ -38,23 +39,29 @@ function crearApp() {
 
   // 5. Rutas principales
   app.get("/", (req, res) => {
-    res.render("inicio", { titulo: "Inicio" });
+    app.locals.servicioReservas = servicioReservas;
+    res.render("inicio", { titulo: "Inicio", seccion: "inicio" });
   });
 
+  // Ruta /estado corregida para devolver cantidad real y el ID de solicitud
   app.get("/estado", (req, res) => {
+    const cantidad = servicioReservas ? servicioReservas.contar() : 0;
     res.json({
-      servicio: "activo",
-      solicitudId: res.locals.solicitudId,
+      estado: "activo",
+      cantidadReservas: cantidad,
+      solicitudId:
+        res.locals.idSolicitud || res.locals.solicitudId || "BIB-000",
     });
   });
 
-  // 6. Montaje de rutas modulares (inyectando la instancia del servicio)
+  // 6. Montaje de rutas modulares (inyectando la instancia del servicio única)
   app.use("/reservas", crearRutasReservas(servicioReservas));
 
   // 7. Manejo global de rutas no encontradas (404)
   app.use((req, res) => {
     res.status(404).render("no-encontrado", {
       titulo: "Página no encontrada",
+      seccion: "404",
       mensaje: "La ruta a la que intentas acceder no existe en el servidor.",
     });
   });
