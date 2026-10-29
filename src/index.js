@@ -1,8 +1,6 @@
 const { crearApp } = require("./app");
-const { obtenerConfiguracion } = require("./configuracion");
+const config = require("./config/entorno");
 const { crearServicioReservas } = require("./servicios/reservas");
-
-const config = obtenerConfiguracion();
 
 // Instancia única compartida del servicio con datos iniciales (semilla)
 const datosIniciales = [

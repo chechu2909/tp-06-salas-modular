@@ -3,18 +3,17 @@ const express = require("express");
 const morgan = require("morgan");
 const expressLayouts = require("express-ejs-layouts");
 
-const { getConfiguracion } = require("./configuracion");
+const config = require("./config/entorno");
 const {
   identificarSolicitud,
   medirDuracion,
 } = require("./middleware/solicitudes");
 
 // 1. Importar la fábrica de rutas
-const crearRutasReservas = require("./rutas/reservas");
+const { crearRutasReservas } = require("./rutas/reservas");
 
 function crearApp(servicioReservas) {
   const app = express();
-  const config = getConfiguracion();
 
   // Guardar el servicio en app.locals para que esté disponible globalmente si se requiere
   app.locals.servicioReservas = servicioReservas;
